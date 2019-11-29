@@ -11,7 +11,7 @@ public class DatabaseService {
     private int titleIndex = 0 , productionYearIndex = 2 ;
     private DatabaseCommunicator databaseCommunicator;
     private Connection connection;
-    private final String connectionDriver = "oracle.jdbc.driver.OracleDriver";
+    private final String connectionDriver = "oracle.jdbc.OracleDriver";
 
     public DatabaseService(String dbUrl, String username, String password){
         this.dbUrl = dbUrl;
@@ -131,15 +131,7 @@ public class DatabaseService {
         return as;
     }
 
-    private void closeDatabaseConnection() {
-        try{
-            this.connection.close();
-        }catch (SQLException e){
-            System.out.println("cant close connection to data base");
-            e.printStackTrace();
-        }
 
-    }
 
     private void insertSimilarityToDatabase(long mid1, long mid2, double similarity) throws SQLException {
         PreparedStatement statement;
@@ -158,6 +150,7 @@ public class DatabaseService {
 
 
     public void fillDatabaseTableFrom(String filePath) throws IOException {
+        this.openDatabaseConnection();
         String row, title= "";
         int prod_yaer = 0;
         BufferedReader bufferedReader = new BufferedReader(new FileReader(filePath));
@@ -173,13 +166,14 @@ public class DatabaseService {
                 }
             }
         }
+        this.closeDatabaseConnection();
     }
 
     private void insertRecord(String title, int prod_year) throws SQLException {
         PreparedStatement statement ;
         try{
             String sql = "insert into MediaItems(TITLE, PROD_YEAR)" +
-                    "VALUES(?,?)";
+                    " VALUES(?,?)";
             statement = this.connection.prepareStatement(sql);
             statement.setString(1, title);
             statement.setInt(2, prod_year);
@@ -193,7 +187,7 @@ public class DatabaseService {
 
 
 
-    private void openDatabaseConnection() {
+    public void openDatabaseConnection() {
         try{
             Class.forName(this.connectionDriver);
             connection = DriverManager.getConnection(dbUrl, username, password);
@@ -202,6 +196,16 @@ public class DatabaseService {
             System.out.println("cant connect to databasePath = [" + dbUrl + "], username = [" + username + "], password = [" + password + "]");
             e.printStackTrace();
         }
+    }
+
+    public void closeDatabaseConnection() {
+        try{
+            this.connection.close();
+        }catch (SQLException e){
+            System.out.println("cant close connection to data base");
+            e.printStackTrace();
+        }
+
     }
 
 }
