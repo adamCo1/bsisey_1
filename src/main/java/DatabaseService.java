@@ -40,8 +40,10 @@ public class DatabaseService {
                  listOfRecords) {
                 for (Long mid2:
                      listOfRecords) {
-                    double similarity = getSimCalculation(mid1, mid2, maximalDistance);
-                    insertSimilarityToDatabase(mid1, mid2, similarity);
+                    float similarity = getSimCalculation(mid1, mid2, maximalDistance);
+                    if(mid1!=mid2) {
+                        insertSimilarityToDatabase(mid1, mid2, similarity);
+                    }
                 }
             }
         }catch(Exception e){
@@ -70,7 +72,7 @@ public class DatabaseService {
     private int getMaximalDistance() {
         int maxDistance = 0;
         CallableStatement getMaxProcedure ;
-        String sql = "( ? = call MaximalDistance()" ;
+        String sql = "{ ? = call MaximalDistance()}" ;
         try {
             getMaxProcedure = this.connection.prepareCall(sql);
             getMaxProcedure.registerOutParameter(1, oracle.jdbc.OracleTypes.NUMBER);
@@ -82,10 +84,10 @@ public class DatabaseService {
         return maxDistance;
     }
 
-    private double getSimCalculation(long mid1, long mid2, int maxDistance) {
-        double simClaculation = 0;
+    private float getSimCalculation(long mid1, long mid2, int maxDistance) {
+        float simClaculation = 0;
         CallableStatement getSimCalculation ;
-        String sql = "( ? = call simCalculation(?, ?, ?)" ;
+        String sql = "{ ? = call simCalculation(?, ?, ?)}" ;
         try {
             getSimCalculation = this.connection.prepareCall(sql);
             getSimCalculation.setLong(2, mid1);
@@ -93,7 +95,7 @@ public class DatabaseService {
             getSimCalculation.setInt(4, maxDistance);
             getSimCalculation.registerOutParameter(1, oracle.jdbc.OracleTypes.FLOAT);
             getSimCalculation.execute();
-            simClaculation = getSimCalculation.getDouble(1);
+            simClaculation = getSimCalculation.getFloat(1);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -115,7 +117,11 @@ public class DatabaseService {
     private ArrayList<String> selectAllSimilarity(long mid){
         ArrayList<String> as = new ArrayList<String>();
         PreparedStatement statement;
-        String sql = "SELECT MEDIAITEMS.TITLE,SIMILIARITY.MID2,SIMILIARITY.SIMILIARITY FROM INNER JOIN MEDIAITEMS ON SIMILIARITY.MID2 WHERE MID1=? AND SIMILIARITY.SIMILIARITY >= 0.3 ORDER BY SIMILARITY DESC";
+        String sql = "select Similarity.MID2 from Similarity where MID1 = ? and Similarity.SIMILARITY >= 0.3";
+       // String sql = "SELECT MediaItems.TITLE, Similarity.MID2, Similarity.SIMILARITY " +
+        //        "FROM Similarity INNER JOIN MediaItems ON Similarity.MID2 " ;
+           //     "WHERE MID1 = ? AND Similarity.SIMILARITY >= 0.3 " +
+           //     "ORDER BY SIMILARITY DESC ;";
         try{
             statement = this.connection.prepareStatement(sql);
             statement.setLong(1,mid);
@@ -133,14 +139,14 @@ public class DatabaseService {
 
 
 
-    private void insertSimilarityToDatabase(long mid1, long mid2, double similarity) throws SQLException {
+    private void insertSimilarityToDatabase(long mid1, long mid2, float similarity) throws SQLException {
         PreparedStatement statement;
         String sql = "INSERT INTO Similarity VALUES(?, ?, ?)";
         try{
             statement = this.connection.prepareStatement(sql);
             statement.setLong(1, mid1);
             statement.setLong(2, mid2);
-            statement.setDouble(3, similarity);
+            statement.setFloat(3, similarity);
             statement.execute();
             this.connection.commit();
         }catch (Exception e){
