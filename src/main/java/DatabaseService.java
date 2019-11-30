@@ -8,8 +8,6 @@ import java.util.Iterator;
 public class DatabaseService {
 
     private String username, dbUrl, password ;
-    private int titleIndex = 0 , productionYearIndex = 2 ;
-    private DatabaseCommunicator databaseCommunicator;
     private Connection connection;
     private final String connectionDriver = "oracle.jdbc.OracleDriver";
 
@@ -17,7 +15,6 @@ public class DatabaseService {
         this.dbUrl = dbUrl;
         this.username = username;
         this.password = password;
-        this.databaseCommunicator = new DatabaseCommunicator();
     }
 
     public void fileToDataBase(String filePath){
@@ -36,13 +33,13 @@ public class DatabaseService {
         ArrayList<Long> listOfRecords = getAllMediaITems();
         int maximalDistance = this.getMaximalDistance();
         try {
-            for (Long mid1:
+            for (Long firstRecordMid:
                  listOfRecords) {
-                for (Long mid2:
+                for (Long secondRecordMid:
                      listOfRecords) {
-                    float similarity = getSimCalculation(mid1, mid2, maximalDistance);
-                    if(mid1!=mid2) {
-                        insertSimilarityToDatabase(mid1, mid2, similarity);
+                    float similarity = getSimCalculation(firstRecordMid, secondRecordMid, maximalDistance);
+                    if(firstRecordMid != secondRecordMid) {
+                        insertSimilarityToDatabase(firstRecordMid, secondRecordMid, similarity);
                     }
                 }
             }
@@ -104,40 +101,47 @@ public class DatabaseService {
 
     public void printSimilarItems(long itemId) {
         openDatabaseConnection();
-        ArrayList<String> similarTitles = this.selectAllSimilarity(itemId);
-        for (String title: similarTitles
-             ) {
-            System.out.println(title);
-
+        try{
+            ArrayList<SimilarityDto> similarItems = this.selectAllSimilarity(itemId);
+            for (SimilarityDto dto:
+                 similarItems) {
+                System.out.print(dto.getTitle() + " ");
+                System.out.println(dto.getSimilarity());
+            }
+        }catch (Exception e){
+            closeDatabaseConnection();
+            e.printStackTrace();
         }
         closeDatabaseConnection();
-
     }
 
-    private ArrayList<String> selectAllSimilarity(long mid){
-        ArrayList<String> as = new ArrayList<String>();
+    private ArrayList<SimilarityDto> selectAllSimilarity(long mid){
+        ArrayList<SimilarityDto> listOfItems = new ArrayList<SimilarityDto>();
         PreparedStatement statement;
-        String sql = "select Similarity.MID2 from Similarity where MID1 = ? and Similarity.SIMILARITY >= 0.3";
-       // String sql = "SELECT MediaItems.TITLE, Similarity.MID2, Similarity.SIMILARITY " +
-        //        "FROM Similarity INNER JOIN MediaItems ON Similarity.MID2 " ;
-           //     "WHERE MID1 = ? AND Similarity.SIMILARITY >= 0.3 " +
-           //     "ORDER BY SIMILARITY DESC ;";
+        String sql = "SELECT MediaItems.TITLE, Similarity.MID2, Similarity.SIMILARITY " +
+                "FROM Similarity INNER JOIN MediaItems ON Similarity.MID2 = MediaItems.MID " +
+                "WHERE MID1 = ? AND Similarity.SIMILARITY >= 0.3 " +
+                "ORDER BY SIMILARITY DESC ;";
         try{
             statement = this.connection.prepareStatement(sql);
             statement.setLong(1,mid);
             ResultSet resultSet = statement.executeQuery();
-            while (resultSet.next()){
-                as.add(resultSet.getString(1));
-            }
-
+            listOfItems = fillSimilarityList(resultSet);
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
-        return as;
+        return listOfItems;
     }
 
+    private ArrayList<SimilarityDto> fillSimilarityList(ResultSet fromResult) throws SQLException {
+        ArrayList<SimilarityDto> dtoList = new ArrayList<SimilarityDto>();
+        while (fromResult.next()){
+            SimilarityDto similarityDto = new SimilarityDto(fromResult.getString(1), fromResult.getFloat(3));
+            dtoList.add(similarityDto);
+        }
 
+        return dtoList ;
+    }
 
     private void insertSimilarityToDatabase(long mid1, long mid2, float similarity) throws SQLException {
         PreparedStatement statement;
@@ -193,7 +197,7 @@ public class DatabaseService {
 
 
 
-    public void openDatabaseConnection() {
+    private void openDatabaseConnection() {
         try{
             Class.forName(this.connectionDriver);
             connection = DriverManager.getConnection(dbUrl, username, password);
@@ -204,7 +208,7 @@ public class DatabaseService {
         }
     }
 
-    public void closeDatabaseConnection() {
+    private void closeDatabaseConnection() {
         try{
             this.connection.close();
         }catch (SQLException e){

@@ -8,14 +8,5 @@
     <artifactId>bsisey1</artifactId>
     <version>1.0-SNAPSHOT</version>
 
-    <dependencies>
-        <!-- https://mvnrepository.com/artifact/com.oracle/ojdbc7 -->
-        <dependency>
-            <groupId>com.oracle</groupId>
-            <artifactId>ojdbc7</artifactId>
-            <version>12.1.0.2</version>
-        </dependency>
-
-    </dependencies>
 
 </project>
